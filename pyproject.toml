@@ -6,6 +6,11 @@ readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
     "ollama>=0.4.6",
+    "psutil>=6.1.1",
     "sortgs>=1.0.7",
     "streamlit>=1.40.1",
+    "useful-decorator",
 ]
+
+[tool.uv.sources]
+useful-decorator = { git = "ssh://git@github.com/YumaHozumi/useful_decorator.git" }

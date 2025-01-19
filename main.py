@@ -4,6 +4,9 @@ import subprocess
 import os
 from datetime import datetime
 import ollama
+import asyncio  # 追加
+from concurrent.futures import ThreadPoolExecutor  # 追加
+import time  # 追加
 
 st.title('Google Scholar論文検索アプリ')
 
@@ -29,6 +32,22 @@ translate_option = st.checkbox('タイトルを日本語翻訳する')
 if 'searching' not in st.session_state:
     st.session_state['searching'] = False
 
+async def translate(text, model='aya:8b'):
+    loop = asyncio.get_event_loop()
+    response = await loop.run_in_executor(None, lambda: ollama.chat(model=model, messages=[
+        {
+            "role": "user",
+            "content": f"Please translate this text from English to Japanese and respond with only the translated text.\nText:{text}"
+        }
+    ], options={"cache": False}))
+    return response["message"]["content"]
+
+async def parallel_translate_texts(texts, model='aya:8b'):
+    loop = asyncio.get_event_loop()
+    tasks = [loop.create_task(translate(text, model)) for text in texts]
+    results = await asyncio.gather(*tasks)
+    return results
+
 if st.button('検索', disabled=st.session_state['searching']):
     st.session_state['searching'] = True
     with st.spinner('検索中...'):
@@ -49,18 +68,19 @@ if st.button('検索', disabled=st.session_state['searching']):
                 csv_file = f"{keyword.replace(' ', '_')}.csv"
                 if os.path.exists(csv_file):
                     df = pd.read_csv(csv_file)
+                    df.drop(columns=['Rank'], inplace=True, errors='ignore')
                     if translate_option:
+                        titles = df['Title'].tolist()
+                        start_time = time.time()  # 時間測定開始
+                        translated_titles = asyncio.run(parallel_translate_texts(titles))
+                        end_time = time.time()  # 時間測定終了
+                        df['タイトルの日本語訳'] = translated_titles
+                        st.write(f"翻訳にかかった時間: {end_time - start_time:.2f}秒")
 
-                        def translate_with_elyza(text):
-                            response  = ollama.chat(model='aya:8b', messages=[
-                                {
-                                    "role": "user",
-                                    "content": f"Please translate this text from English to Japanese and respond with only the translated text.\nText:{text}"
-                                }
-                            ])
-                            return response["message"]["content"]
-
-                        df['タイトルの日本語訳'] = df['Title'].apply(translate_with_elyza)
+                    cols = df.columns.tolist()
+                    if 'Title' in cols and 'タイトルの日本語訳' in cols and 'Author' in cols:
+                        new_cols = ['Title', 'タイトルの日本語訳'] + [c for c in cols if c not in ['Title', 'タイトルの日本語訳', 'Author']] + ['Author']
+                        df = df[new_cols]
 
                     st.dataframe(df)
                     os.remove(csv_file)  # 表示後に削除
