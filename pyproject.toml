@@ -1,0 +1,10 @@
+[project]
+name = "webui-search-gs"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "sortgs>=1.0.7",
+    "streamlit>=1.40.1",
+]
