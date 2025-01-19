@@ -10,22 +10,27 @@ import time
 
 st.title('Google Scholar論文検索アプリ')
 
-# キーワード入力
-keyword = st.text_input('検索キーワードを入力してください')
+# フォームの作成
+with st.form(key='search_form'):
+    # キーワード入力
+    keyword = st.text_input('検索キーワードを入力してください')
 
-# オプション設定
-col1, col2 = st.columns(2)
-current_year = datetime.now().year
+    # オプション設定
+    col1, col2 = st.columns(2)
+    current_year = datetime.now().year
 
-with col1:
-    sort_by = st.selectbox('ソート方法', ['Citations', 'cit/year'])
-    start_year = st.number_input('開始年', min_value=1900, max_value=2100, value=current_year - 2)
+    with col1:
+        sort_by = st.selectbox('ソート方法', ['Citations', 'cit/year'])
+        start_year = st.number_input('開始年', min_value=1900, max_value=2100, value=current_year - 2)
 
-with col2:
-    num_results = st.number_input('検索結果数', min_value=10, max_value=1000, value=20, step=10)
-    end_year = st.number_input('終了年', min_value=1900, max_value=2100, value=current_year)
+    with col2:
+        num_results = st.number_input('検索結果数', min_value=10, max_value=1000, value=20, step=10)
+        end_year = st.number_input('終了年', min_value=1900, max_value=2100, value=current_year)
 
-translate_option = st.checkbox('タイトルを日本語翻訳する')
+    translate_option = st.checkbox('タイトルを日本語翻訳する')
+
+    # フォームの送信ボタン
+    submit_button = st.form_submit_button(label='検索')
 
 # セッション変数の初期化
 if 'searching' not in st.session_state:
@@ -48,7 +53,6 @@ async def translate(text, model='aya:8b'):
                 "content": f"Please translate this text from English to Japanese and respond with only the translated text.\nText:{text}"
             }
         ],
-        options={"cache": False}
     ))
     translated_text = response["message"]["content"]
     return translated_text
@@ -74,7 +78,7 @@ async def translate_and_update(df, df_placeholder):
         await asyncio.sleep(0.1)
 
 # メインの検索ボタン
-if st.button('検索', disabled=st.session_state['searching']):
+if submit_button and not st.session_state['searching']:
     st.session_state['searching'] = True
     st.session_state['translated_texts'] = [None] * num_results
 
@@ -120,9 +124,6 @@ if st.button('検索', disabled=st.session_state['searching']):
                         end_time = time.time()
 
                         st.write(f"翻訳にかかった時間: {end_time - start_time:.2f}秒")
-
-                        st.write("最終的な翻訳済みDataFrame:")
-                        st.dataframe(df)
 
                     else:
                         # 翻訳オプションを使わない場合はそのまま表示
