@@ -24,34 +24,37 @@ with col2:
 
 plot_results = st.checkbox('結果をプロットする')
 
-if st.button('検索'):
-    if keyword:
-        # sort-google-scholarコマンドの実行
-        command = [
-            'sortgs', keyword,
-            '--sortby', sort_by,
-            '--nresults', str(num_results),
-            '--startyear', str(start_year),
-            '--endyear', str(end_year)
-        ]
-        
-        if plot_results:
-            command.append('--plotresults')
-        
-        result = subprocess.run(command, capture_output=True, text=True)
-        
-        if result.returncode == 0:
-            # CSVファイルの読み込み
-            csv_file = f"{keyword.replace(' ', '_')}_sortby_{sort_by}.csv"
-            if os.path.exists(csv_file):
-                df = pd.read_csv(csv_file)
-                st.dataframe(df)
-                
-                if plot_results:
-                    st.image('citations_plot.png')
+if 'searching' not in st.session_state:
+    st.session_state['searching'] = False
+
+if st.button('検索', disabled=st.session_state['searching']):
+    st.session_state['searching'] = True
+    with st.spinner('検索中...'):
+        if keyword:
+            # sort-google-scholarコマンドの実行
+            command = [
+                'sortgs', keyword,
+                '--sortby', sort_by,
+                '--nresults', str(num_results),
+                '--startyear', str(start_year),
+                '--endyear', str(end_year)
+            ]
+            
+            result = subprocess.run(command, capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                # CSVファイルの読み込み
+                csv_file = f"{keyword.replace(' ', '_')}.csv"
+                if os.path.exists(csv_file):
+                    df = pd.read_csv(csv_file)
+                    st.dataframe(df)
+                    os.remove(csv_file)  # 表示後に削除
+
+                else:
+                    st.error('検索結果が見つかりませんでした。')
+                    
             else:
-                st.error('検索結果が見つかりませんでした。')
+                st.error('検索中にエラーが発生しました。')
         else:
-            st.error('検索中にエラーが発生しました。')
-    else:
-        st.warning('キーワードを入力してください。')
+            st.warning('キーワードを入力してください。')
+    st.session_state['searching'] = False
