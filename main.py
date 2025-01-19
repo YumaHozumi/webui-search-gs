@@ -3,6 +3,7 @@ import pandas as pd
 import subprocess
 import os
 from datetime import datetime
+import ollama
 
 st.title('Google Scholar論文検索アプリ')
 
@@ -23,6 +24,7 @@ with col2:
     end_year = st.number_input('終了年', min_value=1900, max_value=2100, value=current_year)
 
 plot_results = st.checkbox('結果をプロットする')
+translate_option = st.checkbox('タイトルを日本語翻訳する')
 
 if 'searching' not in st.session_state:
     st.session_state['searching'] = False
@@ -47,6 +49,19 @@ if st.button('検索', disabled=st.session_state['searching']):
                 csv_file = f"{keyword.replace(' ', '_')}.csv"
                 if os.path.exists(csv_file):
                     df = pd.read_csv(csv_file)
+                    if translate_option:
+
+                        def translate_with_elyza(text):
+                            response  = ollama.chat(model='aya:8b', messages=[
+                                {
+                                    "role": "user",
+                                    "content": f"Please translate this text from English to Japanese and respond with only the translated text.\nText:{text}"
+                                }
+                            ])
+                            return response["message"]["content"]
+
+                        df['タイトルの日本語訳'] = df['Title'].apply(translate_with_elyza)
+
                     st.dataframe(df)
                     os.remove(csv_file)  # 表示後に削除
 
